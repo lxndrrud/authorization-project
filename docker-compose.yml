@@ -1,0 +1,57 @@
+version: "3"
+
+services:
+  auth-session-database:
+    container_name: "auth_session_database"
+    command: ["redis-server", "/etc/redis/redis.conf"]
+    image: "redis:7-alpine3.18"
+    restart: "always"
+    ports:
+      - "7379:6379"
+    networks:
+      - "auth_network"
+    volumes:
+      - "./auth-session-database/redis.conf:/etc/redis/redis.conf"
+
+  auth-database:
+    container_name: "auth_database"
+    image: "postgres:13-alpine"
+    restart: "unless-stopped"
+    ports:
+      - "7432:5432"
+    networks:
+      - "auth_network"
+    environment:
+      POSTGRES_PASSWORD: "authpassw0rd"
+      POSTGRES_USER: "authuser"
+      POSTGRES_DB: "authdb"
+
+  auth_service:
+    container_name: "auth_service"
+    restart: "unless-stopped"
+    build:
+      context: "./auth-microservice"
+      dockerfile: Dockerfile.dev
+    networks:
+      - auth_network
+    ports:
+      - "3035:3035"
+    volumes:
+      - "./auth-microservice:/var/www/auth-microservice"
+    environment:
+      DB_HOST: "auth_database"
+      DB_NAME: "authdb"
+      DB_SCHEMA: "public"
+      DB_PORT: "5432"
+      DB_USER: "authuser"
+      DB_PASSWORD: "authpassw0rd"
+      REDIS_HOST: "auth_session_database"
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ASDxca562zasASDifpgoihpo
+      JWT_SECRET: "ASdas7d9132sjdfsdlfkgfhfg4872"
+      JWT_ACCESS_EXPIRES_IN: "3m"
+      JWT_REFRESH_EXPIRES_IN: "3d"
+
+networks:
+  auth_network:
+    external: False
