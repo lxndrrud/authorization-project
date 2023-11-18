@@ -1,0 +1,1 @@
+docker exec -it auth_service npx jest

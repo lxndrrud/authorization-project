@@ -6,6 +6,7 @@ import { InternalError } from '../../../shared/errors/InternalError';
 import { InvalidRequestError } from '../../../shared/errors/InvalidRequestError';
 import { UTILS_HASHER } from '../../../shared/utils/hasher/hasher';
 import { UTILS_JWT_HELPER } from '../../../shared/utils/jwt-helper/jwt-helper';
+import { LoginUserRequestDto } from '../dto/LoginUserRequest.dto';
 
 export const AUTH_SERVICE = 'AUTH_SERVICE';
 
@@ -16,6 +17,7 @@ interface IDepUsersRepo {
 
 interface IDepHasher {
   hash(payload: string): Promise<string>;
+  compare(raw: string, hashed: string): Promise<boolean>;
 }
 
 interface IDepJwtHelper {
@@ -27,7 +29,14 @@ interface IDepJwtHelper {
   ): Promise<string>;
 }
 
-export interface IAuthService {}
+export interface IAuthService {
+  registerUser(payload: RegisterUserDto): Promise<void>;
+  loginUser(payload: LoginUserRequestDto): Promise<{
+    access: string;
+    refresh: string;
+  }>;
+  getUserInfo(email: string): Promise<User>;
+}
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -53,5 +62,42 @@ export class AuthService implements IAuthService {
     hashedPayload.passwordConfirmation = hashedPayload.password;
 
     await this.usersRepo.createUser(hashedPayload);
+  }
+
+  async loginUser(payload: LoginUserRequestDto) {
+    const user = await this.usersRepo.getByEmail(payload.email);
+    if (!user)
+      throw new InternalError(
+        'User with this combination of email and password is not found!',
+      );
+    const isPasswordValid = await this.hasher.compare(
+      payload.password,
+      user.password,
+    );
+    if (!isPasswordValid)
+      throw new InternalError(
+        'User with this combination of email and password is not found!',
+      );
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtHelper.signToken(
+        { email: user.email },
+        process.env.JWT_ACCESS_EXPIRES_IN as string,
+      ),
+      this.jwtHelper.signToken(
+        { email: user.email },
+        process.env.JWT_REFRESH_EXPIRES_IN as string,
+      ),
+    ]);
+
+    return {
+      access: accessToken,
+      refresh: refreshToken,
+    };
+  }
+
+  async getUserInfo(email: string) {
+    const user = await this.usersRepo.getByEmail(email);
+    if (!user) throw new InternalError('User by specified email is not found.');
+    return user;
   }
 }
