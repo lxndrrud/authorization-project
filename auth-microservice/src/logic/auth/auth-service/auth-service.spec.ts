@@ -11,6 +11,7 @@ import { LoginUserRequestDto } from '../dto/LoginUserRequest.dto';
 import { RedisSessionRepo } from '../sessions-repo/sessions-repo';
 import { TSessionModel } from '../types/SessionModel.type';
 import { RemoveSessionRequestDto } from '../dto/RemoveSessionRequest.dto';
+import { UpdateTokensRequestDto } from '../dto/UpdateTokensRequestDto';
 
 describe('AuthService', () => {
   describe('Register user', () => {
@@ -184,6 +185,168 @@ describe('AuthService', () => {
       expect(userRepoMock.getByEmail.callCount).toEqual(1);
       expect(hasherMock.compare.callCount).toEqual(1);
       expect(jwtHelperMock.signToken.callCount).toEqual(2);
+    });
+  });
+
+  describe('Update tokens', () => {
+    it('FAIL - user by email is not found', async () => {
+      const userRepoMock = createStubInstance(UsersRepo);
+      userRepoMock.getByEmail.resolves(null);
+      const sessionRepoMock = createStubInstance(RedisSessionRepo);
+      const jwtHelperMock = createStubInstance(JwtHelper);
+      jwtHelperMock.verifyAndGetPayload.resolves({
+        email: 'test@ya.ru',
+        jti: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+        deviceId: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+      });
+      const hasherMock = createStubInstance(Hasher);
+      const service = new AuthService(
+        userRepoMock,
+        sessionRepoMock,
+        hasherMock,
+        jwtHelperMock,
+      );
+      const dto = new UpdateTokensRequestDto();
+      dto.refreshToken = 'token';
+
+      try {
+        await service.updateTokens(dto);
+      } catch (error) {
+        expect(error instanceof InternalError).toBeTruthy();
+      }
+
+      expect(jwtHelperMock.verifyAndGetPayload.callCount).toEqual(1);
+      expect(userRepoMock.getByEmail.callCount).toEqual(1);
+      expect(sessionRepoMock.getSession.callCount).toEqual(0);
+      expect(jwtHelperMock.signToken.callCount).toEqual(0);
+      expect(sessionRepoMock.removeSession.callCount).toEqual(0);
+      expect(sessionRepoMock.saveSession.callCount).toEqual(0);
+    });
+
+    it('FAIL - session refresh token does not match user`s refresh token', async () => {
+      const userRepoMock = createStubInstance(UsersRepo);
+      const user = Object.create(User.prototype);
+      userRepoMock.getByEmail.resolves(user);
+      const sessionRepoMock = createStubInstance(RedisSessionRepo);
+      const testSession: TSessionModel = {
+        email: 'test@ya.ru',
+        jti: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+        deviceId: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+        accessToken: 'test',
+        refreshToken: 'test',
+      };
+      sessionRepoMock.getSession.resolves(testSession);
+      const jwtHelperMock = createStubInstance(JwtHelper);
+      jwtHelperMock.verifyAndGetPayload.resolves({
+        email: 'test@ya.ru',
+        jti: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+        deviceId: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+      });
+      const hasherMock = createStubInstance(Hasher);
+      const service = new AuthService(
+        userRepoMock,
+        sessionRepoMock,
+        hasherMock,
+        jwtHelperMock,
+      );
+      const dto = new UpdateTokensRequestDto();
+      dto.refreshToken = 'test1';
+
+      try {
+        await service.updateTokens(dto);
+      } catch (error) {
+        expect(error instanceof InternalError).toBeTruthy();
+      }
+
+      expect(jwtHelperMock.verifyAndGetPayload.callCount).toEqual(1);
+      expect(userRepoMock.getByEmail.callCount).toEqual(1);
+      expect(sessionRepoMock.getSession.callCount).toEqual(1);
+      expect(jwtHelperMock.signToken.callCount).toEqual(0);
+      expect(sessionRepoMock.removeSession.callCount).toEqual(1);
+      expect(sessionRepoMock.saveSession.callCount).toEqual(0);
+    });
+
+    it('FAIL - session email does not match user`s email', async () => {
+      const userRepoMock = createStubInstance(UsersRepo);
+      const user = Object.create(User.prototype);
+      userRepoMock.getByEmail.resolves(user);
+      const sessionRepoMock = createStubInstance(RedisSessionRepo);
+      const testSession: TSessionModel = {
+        email: 'test1@ya.ru',
+        jti: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+        deviceId: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+        accessToken: 'test',
+        refreshToken: 'test',
+      };
+      sessionRepoMock.getSession.resolves(testSession);
+      const jwtHelperMock = createStubInstance(JwtHelper);
+      jwtHelperMock.verifyAndGetPayload.resolves({
+        email: 'test2@ya.ru',
+        jti: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+        deviceId: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+      });
+      const hasherMock = createStubInstance(Hasher);
+      const service = new AuthService(
+        userRepoMock,
+        sessionRepoMock,
+        hasherMock,
+        jwtHelperMock,
+      );
+      const dto = new UpdateTokensRequestDto();
+      dto.refreshToken = 'test';
+
+      try {
+        await service.updateTokens(dto);
+      } catch (error) {
+        expect(error instanceof InternalError).toBeTruthy();
+      }
+
+      expect(jwtHelperMock.verifyAndGetPayload.callCount).toEqual(1);
+      expect(userRepoMock.getByEmail.callCount).toEqual(1);
+      expect(sessionRepoMock.getSession.callCount).toEqual(1);
+      expect(jwtHelperMock.signToken.callCount).toEqual(0);
+      expect(sessionRepoMock.saveSession.callCount).toEqual(0);
+      expect(sessionRepoMock.removeSession.callCount).toEqual(1);
+    });
+
+    it('OK', async () => {
+      const userRepoMock = createStubInstance(UsersRepo);
+      const user = Object.create(User.prototype);
+      user.email = 'test@ya.ru';
+      userRepoMock.getByEmail.resolves(user);
+      const sessionRepoMock = createStubInstance(RedisSessionRepo);
+      const testSession: TSessionModel = {
+        email: 'test@ya.ru',
+        jti: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+        deviceId: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+        accessToken: 'test',
+        refreshToken: 'test',
+      };
+      sessionRepoMock.getSession.resolves(testSession);
+      const jwtHelperMock = createStubInstance(JwtHelper);
+      jwtHelperMock.verifyAndGetPayload.resolves({
+        email: 'test@ya.ru',
+        jti: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+        deviceId: 'f64cf4ae-cadd-4e36-8761-ca16224485a0',
+      });
+      const hasherMock = createStubInstance(Hasher);
+      const service = new AuthService(
+        userRepoMock,
+        sessionRepoMock,
+        hasherMock,
+        jwtHelperMock,
+      );
+      const dto = new UpdateTokensRequestDto();
+      dto.refreshToken = 'test';
+
+      await service.updateTokens(dto);
+
+      expect(jwtHelperMock.verifyAndGetPayload.callCount).toEqual(1);
+      expect(userRepoMock.getByEmail.callCount).toEqual(1);
+      expect(sessionRepoMock.getSession.callCount).toEqual(1);
+      expect(jwtHelperMock.signToken.callCount).toEqual(2);
+      expect(sessionRepoMock.removeSession.callCount).toEqual(1);
+      expect(sessionRepoMock.saveSession.callCount).toEqual(1);
     });
   });
 

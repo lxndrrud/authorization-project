@@ -17,6 +17,8 @@ import { LoginUserRequestDto } from './dto/LoginUserRequest.dto';
 import { LoginUserResponseDto } from './dto/LoginUserResponse.dto';
 import { GetUserSessionsResponseDto } from './dto/GetUserSessionsResponse.dto';
 import { RemoveSessionRequestDto } from './dto/RemoveSessionRequest.dto';
+import { UpdateTokensRequestDto } from './dto/UpdateTokensRequestDto';
+import { UpdateTokensResponseDto } from './dto/UpdateTokensResponse.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -33,6 +35,13 @@ export class AuthController {
   async logIn(@Body() payload: LoginUserRequestDto) {
     const result = await this.authService.loginUser(payload);
     const dto = new LoginUserResponseDto(result.access, result.refresh);
+    return dto;
+  }
+
+  @Post('/updateTokens')
+  async updateTokens(@Body() payload: UpdateTokensRequestDto) {
+    const result = await this.authService.updateTokens(payload);
+    const dto = new UpdateTokensResponseDto(result.access, result.refresh);
     return dto;
   }
 

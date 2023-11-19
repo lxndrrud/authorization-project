@@ -11,6 +11,7 @@ import { TSessionModel } from '../types/SessionModel.type';
 import { SESSION_REPO } from '../sessions-repo/sessions-repo';
 import { UUID, randomUUID } from 'crypto';
 import { RemoveSessionRequestDto } from '../dto/RemoveSessionRequest.dto';
+import { UpdateTokensRequestDto } from '../dto/UpdateTokensRequestDto';
 
 export const AUTH_SERVICE = 'AUTH_SERVICE';
 
@@ -50,6 +51,10 @@ interface IDepJwtHelper {
 export interface IAuthService {
   registerUser(payload: RegisterUserDto): Promise<void>;
   loginUser(payload: LoginUserRequestDto): Promise<{
+    access: string;
+    refresh: string;
+  }>;
+  updateTokens(payload: UpdateTokensRequestDto): Promise<{
     access: string;
     refresh: string;
   }>;
@@ -126,6 +131,54 @@ export class AuthService implements IAuthService {
     } as TSessionModel;
     await this.sessionRepo.saveSession(sessionPayload);
 
+    return {
+      access: accessToken,
+      refresh: refreshToken,
+    };
+  }
+
+  async updateTokens(payload: UpdateTokensRequestDto) {
+    const refreshTokenPayload = await this.jwtHelper.verifyAndGetPayload(
+      payload.refreshToken,
+    );
+
+    const user = await this.usersRepo.getByEmail(refreshTokenPayload.email);
+    if (!user)
+      throw new InternalError('Authorization failed! Try to re-login, please.');
+
+    const session = await this.sessionRepo.getSession(refreshTokenPayload.jti);
+    if (session.refreshToken !== payload.refreshToken) {
+      await this.sessionRepo.removeSession(session);
+      throw new InternalError(
+        'Session can`t be refreshed. Try to re-login, please. Code:431',
+      );
+    }
+    if (user.email !== session.email) {
+      await this.sessionRepo.removeSession(session);
+      throw new InternalError(
+        'Session can`t be refreshed. Try to re-login, please. Code:432',
+      );
+    }
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtHelper.signToken(
+        { email: user.email, jti: session.jti, deviceId: session.deviceId },
+        process.env.JWT_ACCESS_EXPIRES_IN as string,
+      ),
+      this.jwtHelper.signToken(
+        { email: user.email, jti: session.jti, deviceId: session.deviceId },
+        process.env.JWT_REFRESH_EXPIRES_IN as string,
+      ),
+    ]);
+    await this.sessionRepo.removeSession(session);
+    const sessionPayload = {
+      email: user.email,
+      jti: session.jti,
+      deviceId: session.deviceId,
+      accessToken,
+      refreshToken,
+    } as TSessionModel;
+    await this.sessionRepo.saveSession(sessionPayload);
     return {
       access: accessToken,
       refresh: refreshToken,
