@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 import { TokenPayloadSchema } from './validation-schemas/TokenPayload.schema';
+import { UUID } from 'crypto';
 
 export const UTILS_JWT_HELPER = 'UTILS_JWT_HELPER';
 
@@ -8,11 +9,15 @@ export interface IJwtHelper {
   signToken(
     payload: {
       email: string;
+      jti: UUID;
+      deviceId: UUID;
     },
     expiresIn: string | number | undefined,
   ): Promise<string>;
   verifyAndGetPayload(token: string): Promise<{
     email: string;
+    jti: UUID;
+    deviceId: UUID;
   }>;
 }
 
@@ -25,7 +30,7 @@ export class JwtHelper implements IJwtHelper {
    * @returns
    */
   async signToken(
-    payload: { email: string },
+    payload: { email: string; jti: UUID; deviceId: UUID },
     expiresIn: string | number | undefined,
   ) {
     return jwt.sign(payload, process.env.JWT_SECRET as string, {
@@ -39,6 +44,6 @@ export class JwtHelper implements IJwtHelper {
       stripUnknown: true,
     });
     if (resultPayload.error) throw resultPayload.error;
-    return resultPayload.value as { email: string };
+    return resultPayload.value as { email: string; jti: UUID; deviceId: UUID };
   }
 }

@@ -8,4 +8,18 @@ export const TokenPayloadSchema = Joi.object({
     .error(
       new InternalError('There is an error while checking token payload!'),
     ),
+
+  jti: Joi.string()
+    .uuid()
+    .required()
+    .error(
+      new InternalError('There is an error while checking token payload!'),
+    ),
+
+  deviceId: Joi.string()
+    .uuid()
+    .required()
+    .error(
+      new InternalError('There is an error while checking token payload!'),
+    ),
 });

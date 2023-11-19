@@ -6,6 +6,14 @@ export class RegisterUserDto {
   email: string;
 
   @IsNotEmpty()
+  firstname: string;
+
+  patronymic: string | undefined;
+
+  @IsNotEmpty()
+  lastname: string;
+
+  @IsNotEmpty()
   @IsStrongPassword({
     minLength: 6,
     minLowercase: 0,

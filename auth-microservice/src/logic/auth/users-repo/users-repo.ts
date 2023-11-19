@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { User } from '../../../databases/Sequelize/models/User.model';
 import { RegisterUserDto } from '../dto/RegisterUser.dto';
-import { UserPermission } from '../../../databases/Sequelize/models/UserPermission.model';
-import { Permission } from '../../../databases/Sequelize/models/Permission.model';
 
 export const USERS_REPO = 'USERS_REPO';
 
@@ -16,10 +14,6 @@ export class UsersRepo implements IUsersRepo {
   async getByEmail(email: string) {
     const user = await User.findOne({
       where: { email },
-      include: [
-        { model: UserPermission, required: true },
-        { model: Permission, required: true },
-      ],
     });
     return user;
   }
@@ -29,6 +23,9 @@ export class UsersRepo implements IUsersRepo {
       {
         email: payload.email,
         password: payload.password,
+        firstname: payload.firstname,
+        patronymic: payload.patronymic,
+        lastname: payload.lastname,
       },
       { returning: ['*'] },
     );

@@ -3,25 +3,32 @@ import {
   DataType,
   Model,
   Column,
-  Length,
-  BelongsToMany,
   AllowNull,
+  IsEmail,
+  Unique,
 } from 'sequelize-typescript';
-import { Permission } from './Permission.model';
-import { UserPermission } from './UserPermission.model';
 
 @Table({ tableName: `users` })
 export class User extends Model {
+  @IsEmail
+  @Unique
   @AllowNull(false)
-  @Length({ max: 50 })
-  @Column(DataType.STRING)
+  @Column(DataType.STRING(100))
   email: string;
 
   @AllowNull(false)
-  @Length({ max: 200 })
-  @Column(DataType.STRING)
+  @Column(DataType.STRING(200))
   password: string;
 
-  @BelongsToMany(() => Permission, () => UserPermission)
-  permissions: Permission;
+  @AllowNull(false)
+  @Column(DataType.STRING(50))
+  firstname: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING(50))
+  patronymic: string | null;
+
+  @AllowNull(false)
+  @Column(DataType.STRING(50))
+  lastname: string;
 }

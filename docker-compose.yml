@@ -47,7 +47,7 @@ services:
       DB_PASSWORD: "authpassw0rd"
       REDIS_HOST: "auth_session_database"
       REDIS_PORT: "6379"
-      REDIS_PASSWORD: ASDxca562zasASDifpgoihpo
+      REDIS_PASSWORD: "ASDxca562zasASDifpgoihpo"
       JWT_SECRET: "ASdas7d9132sjdfsdlfkgfhfg4872"
       JWT_ACCESS_EXPIRES_IN: "3m"
       JWT_REFRESH_EXPIRES_IN: "3d"

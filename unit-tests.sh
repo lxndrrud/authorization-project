@@ -1,1 +1,1 @@
-docker exec -it auth_service npx jest
+docker exec -it auth_service npx jest --forceExit

@@ -1,6 +1,4 @@
 import { Sequelize } from 'sequelize-typescript';
-import { Permission } from './models/Permission.model';
-import { UserPermission } from './models/UserPermission.model';
 import { User } from './models/User.model';
 
 export const SEQUELIZE_CONNECTION = 'SEQUELIZE_CONNECTION';
@@ -17,7 +15,7 @@ export const SequelizeProvider = {
       database: process.env.DB_NAME,
       schema: process.env.DB_SCHEMA,
     });
-    sequelize.addModels([User, Permission, UserPermission]);
+    sequelize.addModels([User]);
     await sequelize.sync();
     return sequelize;
   },
